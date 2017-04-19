@@ -53,6 +53,19 @@ GZIP_SUPPORT = 1
 #
 #LZ4_SUPPORT = 1
 
+########### Building ZSTD support #############
+#
+# Facebook's ZSTD tools are supported
+# ZSTD homepage: https://github.com/facebook/zstd/
+# ZSTD source repository: https://github.com/facebook/zstd/
+#
+# To build configure the tools using cmake to build shared libraries,
+# install and uncomment
+# the ZSTD_SUPPORT line below.
+#
+ZSTD_SUPPORT = 1
+
+
 
 ########### Building LZMA support #############
 #
@@ -177,6 +190,15 @@ LIBS += -llz4
 COMPRESSORS += lz4
 endif
 
+ifeq ($(ZSTD_SUPPORT),1)
+CFLAGS += -DZSTD_SUPPORT
+MKSQUASHFS_OBJS += zstd_wrapper.o
+UNSQUASHFS_OBJS += zstd_wrapper.o
+LIBS += -lzstd
+COMPRESSORS += zstd
+endif
+
+
 ifeq ($(XATTR_SUPPORT),1)
 ifeq ($(XATTR_DEFAULT),1)
 CFLAGS += -DXATTR_SUPPORT -DXATTR_DEFAULT
@@ -272,6 +294,8 @@ lzma_xz_wrapper.o: lzma_xz_wrapper.c compressor.h squashfs_fs.h
 lzo_wrapper.o: lzo_wrapper.c squashfs_fs.h lzo_wrapper.h compressor.h
 
 lz4_wrapper.o: lz4_wrapper.c squashfs_fs.h lz4_wrapper.h compressor.h
+
+zstd_wrapper.o: zstd_wrapper.c squashfs_fs.h compressor.h
 
 xz_wrapper.o: xz_wrapper.c squashfs_fs.h xz_wrapper.h compressor.h
 
