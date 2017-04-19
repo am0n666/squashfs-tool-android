@@ -54,11 +54,12 @@ static int zstd_compress( void *strm,
 	/* decompression length */
     size_t const dest_size = ZSTD_compressBound(size);
     if (dest_size >= block_size) {
-        fprintf(stderr, "zstd: compression overflow check, abort");
-        return -1;
+        fprintf(stderr, "zstd: compression overflow, expsize:0x%lx, \
+                outsize:0x%x, ignore stream \n", dest_size, block_size);
+        return 0;
     }
 
-    size_t const csize = ZSTD_compress(dest, dest_size , src, size, 1);
+    size_t const csize = ZSTD_compress(dest, block_size , src, size, 1);
     if (ZSTD_isError(csize)) {
         fprintf(stderr, "zstd: error compressing: %s \n",
                 ZSTD_getErrorName(csize));
