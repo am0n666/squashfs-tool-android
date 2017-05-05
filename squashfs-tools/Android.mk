@@ -28,16 +28,18 @@ LOCAL_SRC_FILES := \
     read_xattrs.c \
     gzip_wrapper.c \
     android.c \
-    lz4_wrapper.c
+    lz4_wrapper.c \
+    zstd_wrapper.c
 
 LOCAL_CFLAGS := -I -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -D_GNU_SOURCE -Wall \
-                -DCOMP_DEFAULT="\"lz4\"" -DGZIP_SUPPORT -DLZ4_SUPPORT -DXATTR_SUPPORT -DXATTR_DEFAULT \
-                -Wno-unused-parameter -Wno-sign-compare -Wno-pointer-arith -Wno-missing-field-initializers \
-                -Wno-unused-function -Werror
+                -DCOMP_DEFAULT="\"lz4\"" -DGZIP_SUPPORT -DLZ4_SUPPORT \
+                -DZSTD_SUPPORT -DXATTR_SUPPORT -DXATTR_DEFAULT \
+                -Wno-unused-parameter -Wno-sign-compare -Wno-pointer-arith \
+                -Wno-missing-field-initializers -Wno-unused-function -Werror
 
 LOCAL_LDLIBS := -lpthread -lm -lz
 
 LOCAL_SHARED_LIBRARIES := libcutils libselinux
-LOCAL_STATIC_LIBRARIES := liblz4
+LOCAL_STATIC_LIBRARIES := liblz4 libzstd
 
 include $(BUILD_HOST_EXECUTABLE)
