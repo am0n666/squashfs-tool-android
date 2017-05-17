@@ -33,6 +33,12 @@
 
 static int compression_level = ZSTD_DEFAULT_COMPRESSION_LEVEL;
 
+struct workspace {
+	void *mem;
+	size_t mem_size;
+};
+
+#define _ZSTD_USE_BLOCK_ 1
 /*
  * This function is called by the options parsing code in mksquashfs.c
  * to parse any -X compressor option.
@@ -190,6 +196,7 @@ failed:
  */
 static int zstd_init(void **strm, int block_size, int datablock)
 {
+#if _ZSTD_USE_BLOCK_
 	ZSTD_CCtx *cctx = ZSTD_createCCtx();
 
 	if(!cctx) {
@@ -200,11 +207,15 @@ static int zstd_init(void **strm, int block_size, int datablock)
 
 	*strm = cctx;
 	return 0;
+#else
+    return 0;
+#endif
 }
 
 static int zstd_compress(void *strm, void *dest, void *src, int size,
 	int block_size, int *error)
 {
+#if _ZSTD_USE_BLOCK_
 	const size_t res = ZSTD_compressCCtx((ZSTD_CCtx*)strm, dest,
 			block_size, src, size, compression_level);
 
@@ -229,11 +240,42 @@ static int zstd_compress(void *strm, void *dest, void *src, int size,
 	}
 
 	return (int)res;
+#else
+    ZSTD_CStream *cstream = ZSTD_createCStream();
+    if (cstream==NULL) {
+        fprintf(stderr, "zstd: ZSTD_createCStream() error \n");
+        return -1;
+    }
+    // TODO: instead of const 16 use proper block level
+    size_t const initResult = ZSTD_initCStream(cstream, 1);
+    if (ZSTD_isError(initResult)) {
+        fprintf(stderr, "zstd: ZSTD_initCStream() error : %s \n", ZSTD_getErrorName(initResult));
+        return -1;
+    }
+    size_t res;
+    ZSTD_inBuffer input = { src, size, 0 };
+    ZSTD_outBuffer output = { dest, block_size, 0 };
+    res = ZSTD_compressStream(cstream, &output , &input);
+    if (ZSTD_isError(res)) {
+        fprintf(stderr, "zstd:ZSTD_compressStream() error : %s \n",
+                ZSTD_getErrorName(res));
+        return -1;
+    }
+    ZSTD_outBuffer output1 = { dest, res, 0 };
+    size_t const r = ZSTD_endStream(cstream, &output1);
+    if (r != 0) {
+        fprintf(stderr, "zstd:ZSTD_endStream() error\n");
+        res = r;
+    }
+    return (int)res;
+#endif
 }
+
 
 static int zstd_uncompress(void *dest, void *src, int size, int outsize,
 	int *error)
 {
+#if _ZSTD_USE_BLOCK_
 	const size_t res = ZSTD_decompress(dest, outsize, src, size);
 
 	if(ZSTD_isError(res)) {
@@ -244,6 +286,31 @@ static int zstd_uncompress(void *dest, void *src, int size, int outsize,
 	}
 
 	return (int)res;
+#else
+    fprintf(stderr, "\tzstd: %d %d\n", outsize, size);
+	ZSTD_DStream* const dstream = ZSTD_createDStream();
+    size_t res;
+    if (dstream==NULL) {
+        fprintf(stderr, "zstd: ZSTD_createDStream() error \n");
+        return -1;
+    }
+    size_t const initResult = ZSTD_initDStream(dstream);
+    if (ZSTD_isError(initResult)) {
+        fprintf(stderr, "zstd: ZSTD_initDStream() \
+                error : %s \n", ZSTD_getErrorName(initResult));
+        return -1;
+    }
+    ZSTD_inBuffer input = { src, size, 0 };
+    ZSTD_outBuffer output = { dest, outsize, 0 };
+    res = ZSTD_decompressStream(dstream, &output , &input);
+	if (ZSTD_isError(res)) {
+        fprintf(stderr, "zstd: ZSTD_decompressStream() \
+                error : %s \n", ZSTD_getErrorName(res));
+        return -1;
+	}
+    ZSTD_freeDStream(dstream);
+    return res;
+#endif
 }
 
 static void zstd_usage()
