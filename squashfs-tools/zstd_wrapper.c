@@ -215,6 +215,7 @@ static int zstd_init(void **strm, int block_size, int datablock)
 static int zstd_compress(void *strm, void *dest, void *src, int size,
 	int block_size, int *error)
 {
+    compression_level= 16;
 #if _ZSTD_USE_BLOCK_
 	const size_t res = ZSTD_compressCCtx((ZSTD_CCtx*)strm, dest,
 			block_size, src, size, compression_level);
